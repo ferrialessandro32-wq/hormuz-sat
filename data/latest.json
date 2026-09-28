@@ -1,0 +1,25 @@
+{
+  "generato_utc": "2026-09-28T14:52:49Z",
+  "fonte": "Copernicus Sentinel-1 GRD via Copernicus Data Space Ecosystem, rilevamento CFAR",
+  "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili.",
+  "zone": {
+    "hormuz": {
+      "acq_utc": "2026-09-27T02:14:30Z",
+      "n_ge180m": 18,
+      "n_ge250m": 11,
+      "sea_fraction": 0.95
+    },
+    "yanbu": {
+      "acq_utc": "2026-09-27T15:37:47Z",
+      "n_ge180m": 14,
+      "n_ge250m": 6,
+      "sea_fraction": 0.51
+    },
+    "fujairah": {
+      "acq_utc": "2026-09-27T02:14:55Z",
+      "n_ge180m": 102,
+      "n_ge250m": 64,
+      "sea_fraction": 0.53
+    }
+  }
+}
