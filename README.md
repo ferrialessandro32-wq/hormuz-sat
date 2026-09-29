@@ -18,6 +18,17 @@ Dati: Copernicus Sentinel-1, accesso libero e gratuito anche per uso commerciale
 Per ogni immagine: navi stimate ≥180 m e ≥250 m, coppie affiancate in trasbordo (`n_sts`, contano come 2 navi),
 oggetti di più navi in fila (`n_merged`, contati lunghezza/300 m).
 
+**Navi al buio.** A ogni esecuzione lo script salva una fotografia delle navi AIS grandi del Golfo
+(fonte: hormuz.data-tracking.net) e la confronta con le navi viste dal radar, riportando la posizione AIS
+all'ora dell'immagine con velocità e rotta. `n_ais_match` = navi viste anche dall'AIS, `n_dark` = navi viste
+solo dal radar. La copertura AIS di data-tracking non è completa, quindi `n_dark` è un valore massimo.
+Yanbu non è coperta dall'AIS.
+
+**Strutture fisse.** Gli oggetti che compaiono nello stesso punto in almeno il 60% delle immagini (dopo 5
+immagini della zona) e non coincidono mai con una nave AIS vengono classificati: se sono tozzi (boe, moli,
+piattaforme) vengono esclusi dai conteggi (`n_fixed_excluded`); se hanno forma di nave restano nei conteggi
+come navi ferme a lungo (`n_stationary`), per esempio depositi galleggianti. Elenco in `data/fixed_objects.json`.
+
 ## Attivazione (una volta sola, circa 15 minuti)
 
 1. **Account Copernicus** (gratuito): registrati su https://dataspace.copernicus.eu.

@@ -61,8 +61,23 @@ CSV_PATH = DATA_DIR / "sat_counts.csv"
 LATEST_PATH = DATA_DIR / "latest.json"
 CSV_FIELDS = [
     "acq_utc", "date_utc", "aoi", "scene_id", "n_ge180m", "n_ge250m",
-    "n_sts", "n_merged", "n_objects", "lengths_m", "sea_fraction", "processed_utc",
+    "n_sts", "n_merged", "n_objects", "n_ais_match", "n_dark", "ais_snapshot_utc",
+    "n_fixed_excluded", "n_stationary", "lengths_m", "sea_fraction", "processed_utc",
 ]
+DET_PATH_NAME = "detections.csv"
+DET_FIELDS = ["aoi", "acq_utc", "lon", "lat", "length_m", "width_m", "ais_match"]
+FIXED_PATH_NAME = "fixed_objects.json"
+FIXED_CELL_DEG = 0.002        # ~200 m
+FIXED_MIN_SCENES = 5          # servono almeno 5 immagini della zona per decidere
+FIXED_MIN_SHARE = 0.6         # presente in almeno il 60% delle immagini = oggetto fermo
+SHIP_MIN_ELONGATION = 3.0     # lunghezza/larghezza: una nave è lunga e stretta; boe e piattaforme no
+
+# AIS di data-tracking: posizioni in tempo reale delle navi nel Golfo e nel Golfo di Oman
+AIS_URL = "https://hormuz.data-tracking.net/api/ships"
+AIS_COVERAGE = (47.5, 22.0, 61.0, 30.5)   # lon_min, lat_min, lon_max, lat_max (Yanbu escluso)
+AIS_MIN_LEN = 150.0
+AIS_MAX_GAP_MIN = 75          # fotografia AIS valida se entro 75 minuti dall'immagine
+AIS_KEEP_DAYS = 10
 # Oggetti larghi almeno STS_MIN_WIDTH e lunghi almeno STS_MIN_LEN: due navi affiancate (trasbordo).
 STS_MIN_WIDTH = 100.0
 STS_MIN_LEN = 230.0
@@ -207,7 +222,9 @@ def detect_ships(vv: np.ndarray, valid: np.ndarray, pixel_m: float = PIXEL_M):
         width_m = (projw.max() - projw.min() + 1.0) * pixel_m
         if length_m > 1500:    # troppo lungo anche per una fila di navi: struttura fissa
             continue
-        objs.append((round(length_m), round(width_m)))
+        cy = float(ys.mean() + sl[0].start)
+        cx = float(xs.mean() + sl[1].start)
+        objs.append((round(length_m), round(width_m), cx, cy))
     return sorted(objs, reverse=True), sea_fraction
 
 
@@ -220,7 +237,7 @@ def classify(objs):
     Restituisce navi stimate >=180 m, >=250 m, trasbordi, oggetti fusi.
     """
     n180 = n250 = sts = merged = 0
-    for length, width in objs:
+    for length, width, *_ in objs:
         if length > MERGED_LEN:
             k = max(2, round(length / 300.0))
             merged += 1
@@ -234,6 +251,169 @@ def classify(objs):
             n180 += 1 if length >= LEN_BIG else 0
             n250 += 1 if length >= LEN_VLCC else 0
     return n180, n250, sts, merged
+
+
+def ships_in_object(length, width):
+    """Quante navi rappresenta un oggetto (stessa logica di classify)."""
+    if length > MERGED_LEN:
+        return max(2, round(length / 300.0))
+    if width >= STS_MIN_WIDTH and length >= STS_MIN_LEN:
+        return 2
+    return 1
+
+
+def pixel_to_lonlat(bbox, shape, cx, cy):
+    lon0, lat0, lon1, lat1 = bbox
+    h, w = shape
+    return lon0 + (cx + 0.5) / w * (lon1 - lon0), lat1 - (cy + 0.5) / h * (lat1 - lat0)
+
+
+# ---------------------------------------------------------------- AIS e strutture fisse
+
+def in_box(lon, lat, box, pad=0.0):
+    return box[0] - pad <= lon <= box[2] + pad and box[1] - pad <= lat <= box[3] + pad
+
+
+def save_ais_snapshot(session, now):
+    """Salva una fotografia compatta delle navi AIS grandi vicine alle zone."""
+    ais_dir = DATA_DIR / "ais"
+    ais_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        r = session.get(AIS_URL, timeout=60)
+        r.raise_for_status()
+        ships = r.json()
+    except Exception as e:
+        print(f"AIS non disponibile: {e}")
+        return
+    keep = []
+    for sh in ships:
+        try:
+            lon, lat = float(sh["longitude"]), float(sh["latitude"])
+            length = float(sh.get("length") or 0)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if length < AIS_MIN_LEN:
+            continue
+        if not any(in_box(lon, lat, b, pad=0.1) for b in AOIS.values()):
+            continue
+        keep.append({"mmsi": sh.get("mmsi"), "len": length, "cat": sh.get("ship_category"),
+                     "lon": lon, "lat": lat, "sog": sh.get("speed") or 0.0,
+                     "cog": sh.get("course") or 0.0, "ts": sh.get("timestamp")})
+    stamp = now.strftime("%Y%m%dT%H%M")
+    (ais_dir / f"{stamp}.json").write_text(json.dumps(keep, separators=(",", ":")))
+    print(f"AIS: salvate {len(keep)} navi grandi vicino alle zone")
+    # pulizia delle fotografie vecchie
+    limit = now - timedelta(days=AIS_KEEP_DAYS)
+    for f in ais_dir.glob("*.json"):
+        try:
+            if datetime.strptime(f.stem, "%Y%m%dT%H%M").replace(tzinfo=timezone.utc) < limit:
+                f.unlink()
+        except ValueError:
+            pass
+
+
+def nearest_ais(acq_dt):
+    """Fotografia AIS più vicina all'immagine, entro AIS_MAX_GAP_MIN minuti."""
+    ais_dir = DATA_DIR / "ais"
+    best, best_gap = None, None
+    for f in ais_dir.glob("*.json") if ais_dir.exists() else []:
+        try:
+            ships = json.loads(f.read_text())
+        except Exception:
+            continue
+        if not ships:
+            continue
+        ts = datetime.fromisoformat(ships[0]["ts"].replace("Z", "+00:00"))
+        gap = abs((ts - acq_dt).total_seconds()) / 60
+        if gap <= AIS_MAX_GAP_MIN and (best_gap is None or gap < best_gap):
+            best, best_gap = (ts, ships), gap
+    return best
+
+
+def match_ais(objs_ll, ais, acq_dt):
+    """Per ogni oggetto, quante navi AIS gli corrispondono (posizione riportata all'ora dell'immagine)."""
+    ts, ships = ais
+    counts = []
+    for lon, lat, length, width in objs_ll:
+        n = 0
+        for sh in ships:
+            dt = (acq_dt - datetime.fromisoformat(sh["ts"].replace("Z", "+00:00"))).total_seconds()
+            v = float(sh["sog"]) * 0.5144   # nodi -> m/s
+            if v < 0.5:
+                v = 0.0
+            ang = np.radians(float(sh["cog"]))
+            dn, de = v * np.cos(ang) * dt, v * np.sin(ang) * dt
+            slat = sh["lat"] + dn / 110_574
+            slon = sh["lon"] + de / (111_320 * np.cos(np.radians(sh["lat"])))
+            dy = (slat - lat) * 110_574
+            dx = (slon - lon) * 111_320 * np.cos(np.radians(lat))
+            tol = 700 + length / 2 + 0.2 * v * abs(dt)
+            if (dx * dx + dy * dy) ** 0.5 <= tol:
+                n += 1
+        counts.append(n)
+    return counts
+
+
+def cell_of(lon, lat):
+    return (round(lon / FIXED_CELL_DEG), round(lat / FIXED_CELL_DEG))
+
+
+def load_fixed(key="celle"):
+    path = DATA_DIR / FIXED_PATH_NAME
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    return {aoi: {tuple(c) for c in cells} for aoi, cells in data.get(key, {}).items()}
+
+
+def is_fixed(fixed, aoi, lon, lat):
+    cells = fixed.get(aoi)
+    if not cells:
+        return False
+    cx, cy = cell_of(lon, lat)
+    return any((cx + i, cy + j) in cells for i in (-1, 0, 1) for j in (-1, 0, 1))
+
+
+def update_fixed():
+    """Ricalcola le strutture fisse: stessi punti in >=60% delle immagini e mai una nave AIS."""
+    path = DATA_DIR / DET_PATH_NAME
+    if not path.exists():
+        return
+    scenes, hits, matched, shapes = {}, {}, {}, {}
+    with path.open() as f:
+        for r in csv.DictReader(f):
+            aoi = r["aoi"]
+            scenes.setdefault(aoi, set()).add(r["acq_utc"])
+            c = cell_of(float(r["lon"]), float(r["lat"]))
+            hits.setdefault(aoi, {}).setdefault(c, set()).add(r["acq_utc"])
+            shapes.setdefault(aoi, {}).setdefault(c, []).append(
+                float(r["length_m"]) / max(float(r["width_m"]), 1.0))
+            if r["ais_match"] == "1":
+                matched.setdefault(aoi, set()).add(c)
+    out, still = {}, {}
+    for aoi, sc in scenes.items():
+        if len(sc) < FIXED_MIN_SCENES:
+            continue
+        for c, seen in hits[aoi].items():
+            if len(seen) / len(sc) < FIXED_MIN_SHARE or c in matched.get(aoi, set()):
+                continue
+            elong = float(np.median(shapes[aoi][c]))
+            # lunga e stretta = nave ferma a lungo (resta nei conteggi); altrimenti struttura fissa
+            (still if elong >= SHIP_MIN_ELONGATION else out).setdefault(aoi, []).append(list(c))
+    (DATA_DIR / FIXED_PATH_NAME).write_text(json.dumps({
+        "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte più lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
+        "aggiornato_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "celle": out, "navi_ferme": still}, indent=1))
+
+
+def append_detections(rows):
+    path = DATA_DIR / DET_PATH_NAME
+    new = not path.exists()
+    with path.open("a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=DET_FIELDS)
+        if new:
+            w.writeheader()
+        w.writerows(rows)
 
 
 # ---------------------------------------------------------------- archivio
@@ -287,15 +467,70 @@ def write_latest():
         "generato_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fonte": "Copernicus Sentinel-1 GRD via Copernicus Data Space Ecosystem, rilevamento CFAR",
         "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili. Le righe precedenti al 29/09/2026 non hanno n_sts e n_merged e contano gli oggetti, non le navi stimate.",
-        "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo).",
+        "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila; n_ais_match = navi grandi viste anche dall'AIS di data-tracking; n_dark = navi grandi viste dal radar ma non dall'AIS (al buio, oppure fuori dalla copertura AIS di data-tracking: è un massimo); n_fixed_excluded = strutture fisse escluse (boe, moli, piattaforme); n_stationary = navi ferme nello stesso punto da molte immagini (depositi galleggianti), incluse nei conteggi. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo).",
         "zone": {k: {"acq_utc": v["acq_utc"], "n_ge180m": int(v["n_ge180m"] or 0),
                      "n_ge250m": int(v["n_ge250m"] or 0),
                      "n_sts": int(v["n_sts"]) if v.get("n_sts") not in (None, "") else None,
                      "n_merged": int(v["n_merged"]) if v.get("n_merged") not in (None, "") else None,
+                     "n_ais_match": int(v["n_ais_match"]) if v.get("n_ais_match") not in (None, "") else None,
+                     "n_dark": int(v["n_dark"]) if v.get("n_dark") not in (None, "") else None,
+                     "ais_snapshot_utc": v.get("ais_snapshot_utc") or None,
+                     "n_fixed_excluded": int(v["n_fixed_excluded"]) if v.get("n_fixed_excluded") not in (None, "") else None,
+                     "n_stationary": int(v["n_stationary"]) if v.get("n_stationary") not in (None, "") else None,
                      "sea_fraction": float(v["sea_fraction"])}
                  for k, v in latest.items()},
     }
     LATEST_PATH.write_text(json.dumps(out, indent=2, ensure_ascii=False))
+
+
+def process_scene(aoi, bbox, sc_id, acq, vv, valid, fixed, now):
+    """Elabora un'immagine: navi, trasbordi, strutture fisse escluse, confronto AIS."""
+    det_rows_scene = []
+    objs, sea_frac = detect_ships(vv, valid)
+    # posizione di ogni oggetto e scarto delle strutture fisse note
+    objs_ll, n_fixed = [], 0
+    for L, W, cx, cy in objs:
+        lon, lat = pixel_to_lonlat(bbox, vv.shape, cx, cy)
+        if is_fixed(fixed, aoi, lon, lat):
+            n_fixed += 1
+            continue
+        objs_ll.append((lon, lat, L, W))
+    kept = [(L, W) for _, _, L, W in objs_ll]
+    still = load_fixed("navi_ferme")
+    n_still = sum(1 for lon, lat, L, W in objs_ll if L >= LEN_BIG and is_fixed(still, aoi, lon, lat))
+    n180, n250, sts, merged = classify(kept)
+    # confronto con l'AIS: le navi viste dal radar e non dall'AIS sono al buio
+    acq_dt = datetime.fromisoformat(acq.replace("Z", "+00:00"))
+    n_match = n_dark = None
+    snap_utc = ""
+    covered = in_box((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2, AIS_COVERAGE)
+    ais = nearest_ais(acq_dt) if covered else None
+    matches = match_ais(objs_ll, ais, acq_dt) if ais else [0] * len(objs_ll)
+    if ais:
+        snap_utc = ais[0].strftime("%Y-%m-%dT%H:%M:%SZ")
+        n_match = n_dark = 0
+        for (lon, lat, L, W), m in zip(objs_ll, matches):
+            if L < LEN_BIG:
+                continue
+            k = ships_in_object(L, W)
+            n_match += min(k, m)
+            n_dark += max(0, k - m)
+    for (lon, lat, L, W), m in zip(objs_ll, matches):
+        if L >= 120:
+            det_rows_scene.append({"aoi": aoi, "acq_utc": acq, "lon": f"{lon:.5f}", "lat": f"{lat:.5f}",
+                             "length_m": L, "width_m": W, "ais_match": "1" if m else "0"})
+    row = {
+        "acq_utc": acq, "date_utc": acq[:10], "aoi": aoi, "scene_id": sc_id,
+        "n_ge180m": n180, "n_ge250m": n250, "n_sts": sts, "n_merged": merged,
+        "n_objects": sum(1 for L, _ in kept if L >= LEN_BIG),
+        "n_ais_match": "" if n_match is None else n_match,
+        "n_dark": "" if n_dark is None else n_dark,
+        "ais_snapshot_utc": snap_utc, "n_fixed_excluded": n_fixed, "n_stationary": n_still,
+        "lengths_m": " ".join(f"{L}x{W}" for L, W in kept if L >= 120),
+        "sea_fraction": f"{sea_frac:.2f}",
+        "processed_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    return row, det_rows_scene, (n180, n250, sts, merged, n_fixed, n_match, n_dark)
 
 
 def main():
@@ -304,8 +539,11 @@ def main():
     token = get_token(session)
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=LOOKBACK_DAYS)
+    DATA_DIR.mkdir(exist_ok=True)
+    save_ais_snapshot(session, now)
+    fixed = load_fixed()
     done = load_done()
-    rows = []
+    rows, det_rows = [], []
     for aoi, bbox in AOIS.items():
         try:
             scenes = search_scenes(session, token, bbox, start, now)
@@ -329,20 +567,17 @@ def main():
             if valid.mean() < 0.5:
                 print(f"[{aoi}] {acq} copertura parziale ({valid.mean():.0%}), salto")
                 continue
-            objs, sea_frac = detect_ships(vv, valid)
-            n180, n250, sts, merged = classify(objs)
-            row = {
-                "acq_utc": acq, "date_utc": acq[:10], "aoi": aoi, "scene_id": sc["id"],
-                "n_ge180m": n180, "n_ge250m": n250, "n_sts": sts, "n_merged": merged,
-                "n_objects": sum(1 for L, _ in objs if L >= LEN_BIG),
-                "lengths_m": " ".join(f"{L}x{W}" for L, W in objs if L >= 120),
-                "sea_fraction": f"{sea_frac:.2f}",
-                "processed_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }
-            print(f"[{aoi}] {acq}: {n180} navi >=180 m, {n250} >=250 m, {sts} trasbordi, {merged} oggetti fusi")
+            row, det_scene, (n180, n250, sts, merged, n_fixed, n_match, n_dark) = process_scene(
+                aoi, bbox, sc["id"], acq, vv, valid, fixed, now)
+            det_rows.extend(det_scene)
+            print(f"[{aoi}] {acq}: {n180} navi >=180 m, {n250} >=250 m, {sts} trasbordi, "
+                  f"{merged} fusi, {n_fixed} strutture fisse escluse, AIS: {n_match} viste / {n_dark} al buio")
             rows.append(row)
     if rows:
         append_rows(rows)
+    if det_rows:
+        append_detections(det_rows)
+    update_fixed()
     write_latest()
     print(f"Nuove righe: {len(rows)}")
 

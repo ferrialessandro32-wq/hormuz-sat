@@ -3,6 +3,8 @@ name: Conteggio navi da satellite
 on:
   schedule:
     - cron: "17 */6 * * *"   # ogni 6 ore: prende le nuove immagini appena disponibili
+    - cron: "20 2 * * *"     # subito dopo il passaggio notturno di Sentinel-1 sul Golfo: fotografia AIS
+    - cron: "20 14 * * *"    # subito dopo il passaggio pomeridiano: fotografia AIS
   workflow_dispatch: {}
 
 permissions:
