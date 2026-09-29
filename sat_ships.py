@@ -41,6 +41,14 @@ AOIS = {
     "yanbu": (37.90, 23.85, 38.25, 24.15),
     # ancoraggio e terminal di Fujairah (Golfo di Oman)
     "fujairah": (56.33, 25.00, 56.62, 25.35),
+    # area di trasbordi ship-to-ship al largo di Sohar (Golfo di Oman)
+    "sohar_sts": (56.60, 24.30, 57.00, 24.65),
+    # terminal di carico dentro il Golfo: dicono quanto greggio viene caricato
+    "ras_tanura": (50.00, 26.60, 50.30, 27.00),   # Ras Tanura e boe di Juaymah (Arabia Saudita)
+    "mina_ahmadi": (48.05, 28.95, 48.35, 29.20),  # Mina al-Ahmadi (Kuwait)
+    "basra": (48.65, 29.55, 48.95, 29.90),        # terminal offshore di Basra e Khor al-Amaya (Iraq)
+    "kharg": (50.20, 29.10, 50.45, 29.35),        # isola di Kharg (Iran)
+    "das": (52.80, 24.82, 53.12, 25.22),          # isole di Das e Zirku (Emirati)
 }
 
 # soglie di lunghezza: >=180 m include Aframax e più grandi; >=250 m Suezmax e VLCC
@@ -53,8 +61,13 @@ CSV_PATH = DATA_DIR / "sat_counts.csv"
 LATEST_PATH = DATA_DIR / "latest.json"
 CSV_FIELDS = [
     "acq_utc", "date_utc", "aoi", "scene_id", "n_ge180m", "n_ge250m",
-    "lengths_m", "sea_fraction", "processed_utc",
+    "n_sts", "n_merged", "n_objects", "lengths_m", "sea_fraction", "processed_utc",
 ]
+# Oggetti larghi almeno STS_MIN_WIDTH e lunghi almeno STS_MIN_LEN: due navi affiancate (trasbordo).
+STS_MIN_WIDTH = 100.0
+STS_MIN_LEN = 230.0
+# Oggetti più lunghi di MERGED_LEN: più navi in fila (o nave con scia), contate come lunghezza/300 m.
+MERGED_LEN = 400.0
 
 EVALSCRIPT = """//VERSION=3
 function setup() {
@@ -176,7 +189,7 @@ def detect_ships(vv: np.ndarray, valid: np.ndarray, pixel_m: float = PIXEL_M):
     if n == 0:
         return [], sea_fraction
 
-    lengths = []
+    objs = []
     for sl, idx in zip(ndimage.find_objects(labels), range(1, n + 1)):
         ys, xs = np.nonzero(labels[sl] == idx)
         npx = ys.size
@@ -189,11 +202,38 @@ def detect_ships(vv: np.ndarray, valid: np.ndarray, pixel_m: float = PIXEL_M):
         # asse principale, poi estensione reale lungo l'asse (max - min) + 1 pixel
         _, vecs = np.linalg.eigh(np.cov(pts.T))
         proj = pts @ vecs[:, -1]
+        projw = pts @ vecs[:, 0]
         length_m = (proj.max() - proj.min() + 1.0) * pixel_m
-        if length_m > 500:     # nessuna petroliera supera ~460 m
+        width_m = (projw.max() - projw.min() + 1.0) * pixel_m
+        if length_m > 1500:    # troppo lungo anche per una fila di navi: struttura fissa
             continue
-        lengths.append(round(length_m))
-    return sorted(lengths, reverse=True), sea_fraction
+        objs.append((round(length_m), round(width_m)))
+    return sorted(objs, reverse=True), sea_fraction
+
+
+def classify(objs):
+    """Da oggetti (lunghezza, larghezza) a stima del numero di navi.
+
+    - oggetto largo >= 100 m e lungo >= 230 m: due navi affiancate in trasbordo (2 navi, 1 trasbordo)
+    - oggetto lungo > 400 m: più navi in fila, contate lunghezza/300 m arrotondato (minimo 2)
+    - altrimenti una nave
+    Restituisce navi stimate >=180 m, >=250 m, trasbordi, oggetti fusi.
+    """
+    n180 = n250 = sts = merged = 0
+    for length, width in objs:
+        if length > MERGED_LEN:
+            k = max(2, round(length / 300.0))
+            merged += 1
+            n180 += k
+            n250 += k
+        elif width >= STS_MIN_WIDTH and length >= STS_MIN_LEN:
+            sts += 1
+            n180 += 2
+            n250 += 2 if length >= LEN_VLCC else 0
+        else:
+            n180 += 1 if length >= LEN_BIG else 0
+            n250 += 1 if length >= LEN_VLCC else 0
+    return n180, n250, sts, merged
 
 
 # ---------------------------------------------------------------- archivio
@@ -207,8 +247,25 @@ def load_done():
     return done
 
 
+def migrate_csv():
+    """Porta un CSV con le vecchie colonne al formato attuale (colonne nuove vuote)."""
+    if not CSV_PATH.exists():
+        return
+    with CSV_PATH.open() as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames == CSV_FIELDS:
+            return
+        old = list(reader)
+    with CSV_PATH.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        w.writeheader()
+        for r in old:
+            w.writerow({k: r.get(k, "") for k in CSV_FIELDS})
+
+
 def append_rows(rows):
     DATA_DIR.mkdir(exist_ok=True)
+    migrate_csv()
     new = not CSV_PATH.exists()
     with CSV_PATH.open("a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CSV_FIELDS)
@@ -229,9 +286,13 @@ def write_latest():
     out = {
         "generato_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fonte": "Copernicus Sentinel-1 GRD via Copernicus Data Space Ecosystem, rilevamento CFAR",
-        "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili.",
-        "zone": {k: {"acq_utc": v["acq_utc"], "n_ge180m": int(v["n_ge180m"]),
-                     "n_ge250m": int(v["n_ge250m"]), "sea_fraction": float(v["sea_fraction"])}
+        "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili. Le righe precedenti al 29/09/2026 non hanno n_sts e n_merged e contano gli oggetti, non le navi stimate.",
+        "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo).",
+        "zone": {k: {"acq_utc": v["acq_utc"], "n_ge180m": int(v["n_ge180m"] or 0),
+                     "n_ge250m": int(v["n_ge250m"] or 0),
+                     "n_sts": int(v["n_sts"]) if v.get("n_sts") not in (None, "") else None,
+                     "n_merged": int(v["n_merged"]) if v.get("n_merged") not in (None, "") else None,
+                     "sea_fraction": float(v["sea_fraction"])}
                  for k, v in latest.items()},
     }
     LATEST_PATH.write_text(json.dumps(out, indent=2, ensure_ascii=False))
@@ -268,16 +329,17 @@ def main():
             if valid.mean() < 0.5:
                 print(f"[{aoi}] {acq} copertura parziale ({valid.mean():.0%}), salto")
                 continue
-            lengths, sea_frac = detect_ships(vv, valid)
+            objs, sea_frac = detect_ships(vv, valid)
+            n180, n250, sts, merged = classify(objs)
             row = {
                 "acq_utc": acq, "date_utc": acq[:10], "aoi": aoi, "scene_id": sc["id"],
-                "n_ge180m": sum(1 for x in lengths if x >= LEN_BIG),
-                "n_ge250m": sum(1 for x in lengths if x >= LEN_VLCC),
-                "lengths_m": " ".join(str(x) for x in lengths if x >= 120),
+                "n_ge180m": n180, "n_ge250m": n250, "n_sts": sts, "n_merged": merged,
+                "n_objects": sum(1 for L, _ in objs if L >= LEN_BIG),
+                "lengths_m": " ".join(f"{L}x{W}" for L, W in objs if L >= 120),
                 "sea_fraction": f"{sea_frac:.2f}",
                 "processed_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
-            print(f"[{aoi}] {acq}: {row['n_ge180m']} navi >=180 m, {row['n_ge250m']} >=250 m")
+            print(f"[{aoi}] {acq}: {n180} navi >=180 m, {n250} >=250 m, {sts} trasbordi, {merged} oggetti fusi")
             rows.append(row)
     if rows:
         append_rows(rows)

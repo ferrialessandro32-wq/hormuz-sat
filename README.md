@@ -1,10 +1,22 @@
 # Radar satellitare per il Registro Hormuz
 
-Conta le grandi navi (≥180 m e ≥250 m) nello Stretto di Hormuz, a Yanbu e a Fujairah dalle immagini radar
+Conta le grandi navi (≥180 m e ≥250 m) dalle immagini radar
 Copernicus Sentinel-1, che vedono anche le petroliere con il transponder AIS spento. Gira da solo su
 GitHub ogni 6 ore e pubblica `data/latest.json`, che l'agente Registro Hormuz legge ogni sera.
 
 Dati: Copernicus Sentinel-1, accesso libero e gratuito anche per uso commerciale.
+
+## Zone controllate
+
+| Zona | Cosa misura |
+|---|---|
+| `hormuz` | corsie di traffico dello stretto |
+| `yanbu`, `fujairah` | terminal degli oleodotti di bypass |
+| `sohar_sts` | area di trasbordi ship-to-ship nel Golfo di Oman |
+| `ras_tanura`, `mina_ahmadi`, `basra`, `kharg`, `das` | terminal di carico nel Golfo: quanto greggio viene caricato |
+
+Per ogni immagine: navi stimate ≥180 m e ≥250 m, coppie affiancate in trasbordo (`n_sts`, contano come 2 navi),
+oggetti di più navi in fila (`n_merged`, contati lunghezza/300 m).
 
 ## Attivazione (una volta sola, circa 15 minuti)
 
