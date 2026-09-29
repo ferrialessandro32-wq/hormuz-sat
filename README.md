@@ -14,6 +14,14 @@ Dati: Copernicus Sentinel-1, accesso libero e gratuito anche per uso commerciale
 | `yanbu`, `fujairah` | terminal degli oleodotti di bypass |
 | `sohar_sts` | area di trasbordi ship-to-ship nel Golfo di Oman |
 | `ras_tanura`, `mina_ahmadi`, `basra`, `kharg`, `das` | terminal di carico nel Golfo: quanto greggio viene caricato |
+| `yanbu_berths` | punti di carico di Yanbu nord, porto King Fahd e Muajjiz (oleodotto Est-Ovest) |
+| `ceyhan` | terminal di Ceyhan (oleodotto Kirkuk-Ceyhan e BTC) |
+
+**Ritmo di carico ai terminal.** Nelle zone con punti di carico noti (boe, isole di carico, moli: elenco
+`BERTHS` nello script) conta le navi grandi ormeggiate, ne stima il carico dalla lunghezza (≥300 m 2 Mb,
+250–300 m 1 Mb, 200–250 m 0,7 Mb) e divide per 1,25 giorni di permanenza media all'ormeggio:
+`load_mbd_est` in milioni di barili al giorno. È un'istantanea: va mediata su più immagini. Alcune coordinate
+(Yanbu nord, porto King Fahd, boe di Fujairah) sono approssimate e vanno verificate sulle prime immagini.
 
 Per ogni immagine: navi stimate ≥180 m e ≥250 m, coppie affiancate in trasbordo (`n_sts`, contano come 2 navi),
 oggetti di più navi in fila (`n_merged`, contati lunghezza/300 m).

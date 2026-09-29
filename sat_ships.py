@@ -49,7 +49,30 @@ AOIS = {
     "basra": (48.65, 29.55, 48.95, 29.90),        # terminal offshore di Basra e Khor al-Amaya (Iraq)
     "kharg": (50.20, 29.10, 50.45, 29.35),        # isola di Kharg (Iran)
     "das": (52.80, 24.82, 53.12, 25.22),          # isole di Das e Zirku (Emirati)
+    # punti di carico dell'oleodotto Est-Ovest: Yanbu nord, porto King Fahd e Muajjiz (Yanbu sud)
+    "yanbu_berths": (38.20, 23.78, 38.45, 23.97),
+    # terminal di Ceyhan (Turchia): oleodotto Kirkuk-Ceyhan e BTC
+    "ceyhan": (35.88, 36.83, 35.98, 36.90),
 }
+
+# Punti di carico del greggio (boe SPM, isole di carico, teste dei moli): nome, lat, lon, raggio in metri.
+# Coordinate da OpenStreetMap e documenti dei porti; quelle segnate "bassa" sono approssimate.
+BERTHS = {
+    "yanbu_berths": [("Muajjiz / Yanbu sud", 23.8065, 38.4022, 900),
+                     ("Yanbu nord, terminal Aramco (bassa)", 23.9165, 38.3030, 900),
+                     ("Porto King Fahd, briccole (bassa)", 23.9410, 38.2295, 900)],
+    "fujairah": [("Boe SPM Fujairah (bassa)", 25.310, 56.420, 1500),
+                 ("Molo VLCC Fujairah (bassa)", 25.190, 56.380, 800)],
+    "ceyhan": [("Molo BTC", 36.853, 35.9325, 700), ("Molo BOTAS Kirkuk", 36.870, 35.9447, 700)],
+    "ras_tanura": [("Sea Island", 26.660, 50.180, 900), ("North Pier", 26.645, 50.168, 900),
+                   ("Juaymah SPM", 26.940, 50.057, 1800)],
+    "basra": [("ABOT", 29.6848, 48.8052, 900), ("KAAOT", 29.7822, 48.8083, 700)],
+    "mina_ahmadi": [("Sea Island", 29.1164, 48.2921, 800), ("Boe SPM 20-24", 29.130, 48.305, 2500)],
+    "kharg": [("T-Jetty est", 29.230, 50.3397, 1000), ("Sea Island ovest", 29.2286, 50.2857, 800)],
+}
+# Carico tipico per lunghezza della nave (milioni di barili) e tempo medio all'ormeggio (giorni)
+CARGO_BY_LEN = [(300, 2.0), (250, 1.0), (200, 0.7), (180, 0.5)]
+BERTH_DAYS = 1.25
 
 # soglie di lunghezza: >=180 m include Aframax e più grandi; >=250 m Suezmax e VLCC
 LEN_BIG = 180.0
@@ -62,7 +85,8 @@ LATEST_PATH = DATA_DIR / "latest.json"
 CSV_FIELDS = [
     "acq_utc", "date_utc", "aoi", "scene_id", "n_ge180m", "n_ge250m",
     "n_sts", "n_merged", "n_objects", "n_ais_match", "n_dark", "ais_snapshot_utc",
-    "n_fixed_excluded", "n_stationary", "lengths_m", "sea_fraction", "processed_utc",
+    "n_fixed_excluded", "n_stationary", "berth_ships", "berth_cargo_mb", "load_mbd_est",
+    "lengths_m", "sea_fraction", "processed_utc",
 ]
 DET_PATH_NAME = "detections.csv"
 DET_FIELDS = ["aoi", "acq_utc", "lon", "lat", "length_m", "width_m", "ais_match"]
@@ -260,6 +284,37 @@ def ships_in_object(length, width):
     if width >= STS_MIN_WIDTH and length >= STS_MIN_LEN:
         return 2
     return 1
+
+
+def cargo_of(length):
+    for min_len, mb in CARGO_BY_LEN:
+        if length >= min_len:
+            return mb
+    return 0.0
+
+
+def berth_load(aoi, objs_ll):
+    """Navi grandi ormeggiate ai punti di carico, carico stimato e ritmo di carico (Mb/g).
+
+    Ritmo = carico delle navi all'ormeggio / giorni medi di permanenza all'ormeggio.
+    Una sola immagine è un'istantanea: va mediata su più passaggi.
+    """
+    berths = BERTHS.get(aoi)
+    if not berths:
+        return None, None, None
+    ships = cargo = 0.0
+    for lon, lat, L, W in objs_ll:
+        if L < LEN_BIG:
+            continue
+        for _, blat, blon, radius in berths:
+            dy = (lat - blat) * 110_574
+            dx = (lon - blon) * 111_320 * np.cos(np.radians(blat))
+            if (dx * dx + dy * dy) ** 0.5 <= radius:
+                k = ships_in_object(L, W)
+                ships += k
+                cargo += k * cargo_of(min(L, 340) if k == 1 else 330)
+                break
+    return int(ships), round(cargo, 2), round(cargo / BERTH_DAYS, 2)
 
 
 def pixel_to_lonlat(bbox, shape, cx, cy):
@@ -467,7 +522,7 @@ def write_latest():
         "generato_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fonte": "Copernicus Sentinel-1 GRD via Copernicus Data Space Ecosystem, rilevamento CFAR",
         "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili. Le righe precedenti al 29/09/2026 non hanno n_sts e n_merged e contano gli oggetti, non le navi stimate.",
-        "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila; n_ais_match = navi grandi viste anche dall'AIS di data-tracking; n_dark = navi grandi viste dal radar ma non dall'AIS (al buio, oppure fuori dalla copertura AIS di data-tracking: è un massimo); n_fixed_excluded = strutture fisse escluse (boe, moli, piattaforme); n_stationary = navi ferme nello stesso punto da molte immagini (depositi galleggianti), incluse nei conteggi. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo).",
+        "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila; n_ais_match = navi grandi viste anche dall'AIS di data-tracking; n_dark = navi grandi viste dal radar ma non dall'AIS (al buio, oppure fuori dalla copertura AIS di data-tracking: è un massimo); n_fixed_excluded = strutture fisse escluse (boe, moli, piattaforme); n_stationary = navi ferme nello stesso punto da molte immagini (depositi galleggianti), incluse nei conteggi; berth_ships = navi grandi ai punti di carico, berth_cargo_mb = loro carico stimato, load_mbd_est = ritmo di carico stimato (carico all'ormeggio / 1,25 giorni di permanenza): istantanea, va mediata su più immagini. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo), yanbu_berths (punti di carico di Yanbu e Muajjiz), ceyhan (terminal di Ceyhan).",
         "zone": {k: {"acq_utc": v["acq_utc"], "n_ge180m": int(v["n_ge180m"] or 0),
                      "n_ge250m": int(v["n_ge250m"] or 0),
                      "n_sts": int(v["n_sts"]) if v.get("n_sts") not in (None, "") else None,
@@ -477,6 +532,9 @@ def write_latest():
                      "ais_snapshot_utc": v.get("ais_snapshot_utc") or None,
                      "n_fixed_excluded": int(v["n_fixed_excluded"]) if v.get("n_fixed_excluded") not in (None, "") else None,
                      "n_stationary": int(v["n_stationary"]) if v.get("n_stationary") not in (None, "") else None,
+                     "berth_ships": int(v["berth_ships"]) if v.get("berth_ships") not in (None, "") else None,
+                     "berth_cargo_mb": float(v["berth_cargo_mb"]) if v.get("berth_cargo_mb") not in (None, "") else None,
+                     "load_mbd_est": float(v["load_mbd_est"]) if v.get("load_mbd_est") not in (None, "") else None,
                      "sea_fraction": float(v["sea_fraction"])}
                  for k, v in latest.items()},
     }
@@ -496,6 +554,7 @@ def process_scene(aoi, bbox, sc_id, acq, vv, valid, fixed, now):
             continue
         objs_ll.append((lon, lat, L, W))
     kept = [(L, W) for _, _, L, W in objs_ll]
+    b_ships, b_cargo, b_rate = berth_load(aoi, objs_ll)
     still = load_fixed("navi_ferme")
     n_still = sum(1 for lon, lat, L, W in objs_ll if L >= LEN_BIG and is_fixed(still, aoi, lon, lat))
     n180, n250, sts, merged = classify(kept)
@@ -526,6 +585,9 @@ def process_scene(aoi, bbox, sc_id, acq, vv, valid, fixed, now):
         "n_ais_match": "" if n_match is None else n_match,
         "n_dark": "" if n_dark is None else n_dark,
         "ais_snapshot_utc": snap_utc, "n_fixed_excluded": n_fixed, "n_stationary": n_still,
+        "berth_ships": "" if b_ships is None else b_ships,
+        "berth_cargo_mb": "" if b_cargo is None else b_cargo,
+        "load_mbd_est": "" if b_rate is None else b_rate,
         "lengths_m": " ".join(f"{L}x{W}" for L, W in kept if L >= 120),
         "sea_fraction": f"{sea_frac:.2f}",
         "processed_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
