@@ -1,6 +1,100 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-09-30T02:34:16Z",
- "celle": {},
- "navi_ferme": {}
+ "aggiornato_utc": "2026-09-30T06:39:07Z",
+ "celle": {
+  "basra": [
+   [
+    24389,
+    14804
+   ],
+   [
+    24430,
+    14819
+   ],
+   [
+    24396,
+    14787
+   ],
+   [
+    24355,
+    14837
+   ],
+   [
+    24401,
+    14793
+   ],
+   [
+    24352,
+    14821
+   ],
+   [
+    24389,
+    14791
+   ],
+   [
+    24394,
+    14810
+   ],
+   [
+    24385,
+    14822
+   ],
+   [
+    24423,
+    14837
+   ],
+   [
+    24383,
+    14832
+   ],
+   [
+    24410,
+    14858
+   ],
+   [
+    24392,
+    14822
+   ],
+   [
+    24391,
+    14909
+   ],
+   [
+    24414,
+    14833
+   ],
+   [
+    24403,
+    14893
+   ],
+   [
+    24411,
+    14914
+   ]
+  ]
+ },
+ "navi_ferme": {
+  "basra": [
+   [
+    24454,
+    14805
+   ],
+   [
+    24455,
+    14786
+   ],
+   [
+    24446,
+    14819
+   ],
+   [
+    24401,
+    14852
+   ],
+   [
+    24404,
+    14891
+   ]
+  ]
+ }
 }
