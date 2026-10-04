@@ -1,17 +1,146 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-10-04T13:41:00Z",
+ "aggiornato_utc": "2026-10-04T20:33:45Z",
  "celle": {
-  "basra": [
+  "ras_tanura": [
    [
-    24385,
-    14822
+    25083,
+    13325
    ],
    [
-    24404,
-    14891
+    25011,
+    13457
+   ],
+   [
+    25108,
+    13311
+   ],
+   [
+    25119,
+    13325
+   ],
+   [
+    25040,
+    13302
+   ],
+   [
+    25066,
+    13334
+   ],
+   [
+    25040,
+    13301
+   ],
+   [
+    25111,
+    13313
+   ],
+   [
+    25013,
+    13459
+   ],
+   [
+    25063,
+    13340
+   ],
+   [
+    25111,
+    13310
+   ],
+   [
+    25020,
+    13381
+   ],
+   [
+    25143,
+    13315
+   ],
+   [
+    25017,
+    13334
+   ],
+   [
+    25002,
+    13383
+   ],
+   [
+    25011,
+    13332
+   ],
+   [
+    25085,
+    13318
+   ],
+   [
+    25148,
+    13305
+   ],
+   [
+    25065,
+    13338
+   ],
+   [
+    25002,
+    13387
+   ]
+  ],
+  "basra": [
+   [
+    24414,
+    14833
+   ],
+   [
+    24403,
+    14893
+   ]
+  ],
+  "ceyhan": [
+   [
+    17966,
+    18426
+   ],
+   [
+    17980,
+    18443
+   ],
+   [
+    17952,
+    18418
+   ],
+   [
+    17970,
+    18439
+   ],
+   [
+    17971,
+    18438
+   ],
+   [
+    17945,
+    18417
    ]
   ]
  },
- "navi_ferme": {}
+ "navi_ferme": {
+  "ras_tanura": [
+   [
+    25024,
+    13436
+   ],
+   [
+    25014,
+    13331
+   ]
+  ],
+  "ceyhan": [
+   [
+    17972,
+    18435
+   ],
+   [
+    17953,
+    18416
+   ]
+  ]
+ }
 }
