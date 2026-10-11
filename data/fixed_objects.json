@@ -1,6 +1,6 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-10-11T06:37:25Z",
+ "aggiornato_utc": "2026-10-11T12:37:08Z",
  "celle": {
   "sohar_sts": [
    [
@@ -120,104 +120,12 @@
   ],
   "mina_ahmadi": [
    [
-    24081,
-    14524
-   ],
-   [
-    24085,
-    14493
-   ],
-   [
-    24103,
-    14514
-   ],
-   [
-    24096,
-    14475
-   ],
-   [
-    24076,
-    14494
-   ],
-   [
-    24038,
-    14559
-   ],
-   [
-    24126,
+    24046,
     14522
    ],
    [
-    24049,
-    14497
-   ],
-   [
-    24054,
-    14484
-   ],
-   [
-    24048,
-    14494
-   ],
-   [
-    24034,
-    14514
-   ],
-   [
-    24032,
-    14566
-   ],
-   [
-    24039,
-    14513
-   ],
-   [
-    24057,
-    14481
-   ],
-   [
-    24052,
-    14513
-   ],
-   [
-    24056,
-    14514
-   ],
-   [
-    24047,
-    14503
-   ],
-   [
-    24055,
-    14479
-   ],
-   [
-    24081,
-    14534
-   ],
-   [
     24087,
-    14520
-   ],
-   [
-    24043,
-    14515
-   ],
-   [
-    24050,
-    14509
-   ],
-   [
-    24078,
-    14493
-   ],
-   [
-    24026,
-    14479
-   ],
-   [
-    24035,
-    14530
+    14488
    ]
   ],
   "basra": [
@@ -296,24 +204,6 @@
    [
     26430,
     12462
-   ]
-  ],
-  "ceyhan": [
-   [
-    17966,
-    18426
-   ],
-   [
-    17971,
-    18438
-   ],
-   [
-    17945,
-    18417
-   ],
-   [
-    17970,
-    18441
    ]
   ],
   "hormuz": [
@@ -412,16 +302,8 @@
     14557
    ],
    [
-    24046,
-    14522
-   ],
-   [
     24028,
     14516
-   ],
-   [
-    24087,
-    14488
    ]
   ],
   "kharg": [
