@@ -1,6 +1,6 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-10-23T02:55:18Z",
+ "aggiornato_utc": "2026-10-23T06:57:46Z",
  "celle": {
   "sohar_sts": [
    [
@@ -60,80 +60,12 @@
   ],
   "mina_ahmadi": [
    [
-    24081,
-    14524
-   ],
-   [
-    24103,
-    14514
-   ],
-   [
-    24087,
-    14490
-   ],
-   [
-    24096,
-    14475
+    24085,
+    14493
    ],
    [
     24033,
     14557
-   ],
-   [
-    24076,
-    14494
-   ],
-   [
-    24049,
-    14497
-   ],
-   [
-    24054,
-    14484
-   ],
-   [
-    24048,
-    14494
-   ],
-   [
-    24034,
-    14514
-   ],
-   [
-    24032,
-    14566
-   ],
-   [
-    24052,
-    14513
-   ],
-   [
-    24056,
-    14514
-   ],
-   [
-    24026,
-    14587
-   ],
-   [
-    24087,
-    14520
-   ],
-   [
-    24043,
-    14515
-   ],
-   [
-    24050,
-    14509
-   ],
-   [
-    24078,
-    14493
-   ],
-   [
-    24028,
-    14476
    ]
   ],
   "fujairah": [
@@ -258,10 +190,6 @@
    [
     24032,
     14571
-   ],
-   [
-    24085,
-    14493
    ],
    [
     24050,
