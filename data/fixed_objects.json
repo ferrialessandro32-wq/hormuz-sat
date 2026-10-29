@@ -1,6 +1,6 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-10-28T19:03:24Z",
+ "aggiornato_utc": "2026-10-29T03:05:45Z",
  "celle": {
   "hormuz": [
    [
@@ -48,20 +48,96 @@
   ],
   "yanbu": [
    [
+    19055,
+    12045
+   ],
+   [
+    19073,
+    12057
+   ],
+   [
+    19081,
+    12062
+   ],
+   [
     19098,
     12060
+   ],
+   [
+    19074,
+    12070
    ],
    [
     19015,
     12069
    ],
    [
+    19074,
+    12063
+   ],
+   [
+    19085,
+    12074
+   ],
+   [
+    19074,
+    12060
+   ],
+   [
+    19032,
+    12075
+   ],
+   [
+    19033,
+    12069
+   ],
+   [
+    19088,
+    12073
+   ],
+   [
+    19065,
+    12039
+   ],
+   [
+    19081,
+    12009
+   ],
+   [
+    19036,
+    12074
+   ],
+   [
     19021,
     12067
    ],
    [
+    19077,
+    12047
+   ],
+   [
+    19070,
+    12057
+   ],
+   [
     19013,
     12062
+   ],
+   [
+    19091,
+    12031
+   ],
+   [
+    19105,
+    12073
+   ],
+   [
+    18974,
+    12073
+   ],
+   [
+    19001,
+    12050
    ]
   ]
  },
@@ -120,6 +196,10 @@
    [
     19085,
     12058
+   ],
+   [
+    19032,
+    12070
    ]
   ]
  }
