@@ -1,7 +1,33 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-11-09T09:56:44Z",
+ "aggiornato_utc": "2026-11-09T22:23:41Z",
  "celle": {
+  "ras_tanura": [
+   [
+    25108,
+    13311
+   ],
+   [
+    25066,
+    13334
+   ],
+   [
+    25040,
+    13301
+   ],
+   [
+    25111,
+    13310
+   ],
+   [
+    25002,
+    13383
+   ],
+   [
+    25011,
+    13458
+   ]
+  ],
   "mina_ahmadi": [
    [
     24081,
@@ -72,6 +98,16 @@
     14479
    ]
   ],
+  "kharg": [
+   [
+    25168,
+    14608
+   ],
+   [
+    25183,
+    14675
+   ]
+  ],
   "das": [
    [
     26545,
@@ -118,6 +154,10 @@
    [
     25024,
     13436
+   ],
+   [
+    25009,
+    13401
    ]
   ],
   "mina_ahmadi": [
