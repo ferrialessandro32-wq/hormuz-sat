@@ -1,6 +1,6 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-11-16T09:55:21Z",
+ "aggiornato_utc": "2026-11-16T22:05:45Z",
  "celle": {
   "ras_tanura": [
    [
@@ -108,6 +108,12 @@
    [
     24028,
     14572
+   ]
+  ],
+  "das": [
+   [
+    26443,
+    12579
    ]
   ],
   "yanbu": [
