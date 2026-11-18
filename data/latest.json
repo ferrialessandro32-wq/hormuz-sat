@@ -1,15 +1,15 @@
 {
-  "generato_utc": "2026-11-18T10:21:38Z",
+  "generato_utc": "2026-11-18T20:33:50Z",
   "fonte": "Copernicus Sentinel-1 GRD via Copernicus Data Space Ecosystem, rilevamento CFAR",
   "nota": "Conteggio istantaneo di navi lunghe presenti nella zona al passaggio del satellite, incluse quelle con AIS spento. Indice di attività, non barili. Le righe precedenti al 29/09/2026 non hanno n_sts e n_merged e contano gli oggetti, non le navi stimate.",
   "legenda": "n_ge180m/n_ge250m = navi stimate (i trasbordi contano 2 navi); n_sts = coppie affiancate in trasbordo; n_merged = oggetti di più navi in fila; n_ais_match = navi grandi viste anche dall'AIS di data-tracking; n_dark = navi grandi viste dal radar ma non dall'AIS (al buio, oppure fuori dalla copertura AIS di data-tracking: è un massimo); n_fixed_excluded = strutture fisse escluse (boe, moli, piattaforme); n_stationary = navi ferme nello stesso punto da molte immagini (depositi galleggianti), incluse nei conteggi; berth_ships = navi grandi ai punti di carico, berth_cargo_mb = loro carico stimato, load_mbd_est = ritmo di carico stimato (carico all'ormeggio / 1,25 giorni di permanenza): istantanea, va mediata su più immagini. Zone: hormuz (stretto), yanbu e fujairah (terminal di bypass), sohar_sts (area trasbordi), ras_tanura, mina_ahmadi, basra, kharg, das (terminal di carico nel Golfo), yanbu_berths (punti di carico di Yanbu e Muajjiz), ceyhan (terminal di Ceyhan).",
   "zone": {
     "hormuz": {
-      "acq_utc": "2026-11-15T02:06:01Z",
-      "n_ge180m": 52,
-      "n_ge250m": 43,
-      "n_sts": 9,
-      "n_merged": 11,
+      "acq_utc": "2026-11-18T14:16:28Z",
+      "n_ge180m": 41,
+      "n_ge250m": 31,
+      "n_sts": 6,
+      "n_merged": 9,
       "n_ais_match": null,
       "n_dark": null,
       "ais_snapshot_utc": null,
@@ -18,7 +18,7 @@
       "berth_ships": null,
       "berth_cargo_mb": null,
       "load_mbd_est": null,
-      "sea_fraction": 0.69
+      "sea_fraction": 0.95
     },
     "yanbu": {
       "acq_utc": "2026-11-14T15:37:46Z",
@@ -37,36 +37,36 @@
       "sea_fraction": 0.51
     },
     "fujairah": {
-      "acq_utc": "2026-11-15T02:06:30Z",
-      "n_ge180m": 303,
-      "n_ge250m": 239,
-      "n_sts": 102,
-      "n_merged": 27,
+      "acq_utc": "2026-11-18T14:16:03Z",
+      "n_ge180m": 292,
+      "n_ge250m": 210,
+      "n_sts": 113,
+      "n_merged": 14,
       "n_ais_match": null,
       "n_dark": null,
       "ais_snapshot_utc": null,
       "n_fixed_excluded": 0,
       "n_stationary": 0,
       "berth_ships": 5,
-      "berth_cargo_mb": 7.2,
-      "load_mbd_est": 5.76,
+      "berth_cargo_mb": 8.7,
+      "load_mbd_est": 6.96,
       "sea_fraction": 0.87
     },
     "sohar_sts": {
-      "acq_utc": "2026-11-15T02:06:30Z",
-      "n_ge180m": 183,
-      "n_ge250m": 129,
-      "n_sts": 52,
-      "n_merged": 19,
+      "acq_utc": "2026-11-18T14:15:38Z",
+      "n_ge180m": 156,
+      "n_ge250m": 93,
+      "n_sts": 39,
+      "n_merged": 12,
       "n_ais_match": null,
       "n_dark": null,
       "ais_snapshot_utc": null,
       "n_fixed_excluded": 0,
-      "n_stationary": 1,
+      "n_stationary": 0,
       "berth_ships": null,
       "berth_cargo_mb": null,
       "load_mbd_est": null,
-      "sea_fraction": 0.85
+      "sea_fraction": 0.84
     },
     "ras_tanura": {
       "acq_utc": "2026-11-17T02:38:58Z",
