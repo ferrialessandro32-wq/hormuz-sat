@@ -1,7 +1,13 @@
 {
  "nota": "Oggetti rilevati nello stesso punto in almeno il 60% delle immagini della zona e mai associati a una nave AIS. 'celle' = strutture fisse (boe, moli, piattaforme: forma tozza), escluse dai conteggi. 'navi_ferme' = forma da nave (almeno 3 volte pi\u00f9 lunga che larga): navi ferme a lungo, per esempio depositi galleggianti, che restano nei conteggi.",
- "aggiornato_utc": "2026-11-26T23:04:18Z",
+ "aggiornato_utc": "2026-11-27T08:39:24Z",
  "celle": {
+  "sohar_sts": [
+   [
+    28312,
+    12255
+   ]
+  ],
   "ras_tanura": [
    [
     25108,
@@ -26,14 +32,24 @@
     14608
    ]
   ],
-  "ceyhan": [
+  "hormuz": [
    [
-    17980,
-    18443
+    28269,
+    13239
    ],
    [
-    17945,
-    18417
+    28233,
+    13186
+   ]
+  ],
+  "fujairah": [
+   [
+    28185,
+    12624
+   ],
+   [
+    28188,
+    12635
    ]
   ],
   "yanbu": [
@@ -234,6 +250,18 @@
    [
     17966,
     18426
+   ]
+  ],
+  "hormuz": [
+   [
+    28270,
+    13184
+   ]
+  ],
+  "fujairah": [
+   [
+    28188,
+    12621
    ]
   ],
   "yanbu": [
